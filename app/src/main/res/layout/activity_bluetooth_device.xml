@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:layout_height="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="Ningun Dispositivo"
+        android:textSize="20dp"
+        android:layout_marginTop="20px"
+        android:layout_marginBottom="20px"
+        android:id="@+id/conexion"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="- - -"
+        android:textSize="40dp"
+        android:id="@+id/medicion"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Medir pulso"
+        android:textSize="20dp"
+        android:id="@+id/boton"/>
+
+</LinearLayout>

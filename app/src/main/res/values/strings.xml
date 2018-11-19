@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SmartHelper</string>
+    <string name="title_activity_bluetooth_device">BluetoothDevice</string>
+    <string name="refresh">refresh</string>
 </resources>
