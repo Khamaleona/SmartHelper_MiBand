@@ -5,21 +5,14 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.QuickContactBadge;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.Arrays;
 
@@ -32,6 +25,8 @@ public class BluetoothDevice extends AppCompatActivity {
     private android.bluetooth.BluetoothDevice device;
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothGatt bluetoothGatt;
+    private Handler handler;
+    private String heartValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,9 +37,52 @@ public class BluetoothDevice extends AppCompatActivity {
         boton = findViewById(R.id.boton);
         conexion = findViewById(R.id.conexion);
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        handler = new Handler();
 
         getBondedDevices();
         initializeButton();
+
+        Thread t = new Thread(){
+            @Override
+            public void run(){
+                while(!isInterrupted()){
+                    try{
+                        Thread.sleep(20000);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                startScanHeartRate();
+                                updateHeartValue();
+                            }
+                        });
+                    }catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+
+        t.start();
+    }
+
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//        handler.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                updateHeartValue();
+//            }
+//        },1000);
+//    }
+
+    public void updateHeartValue(){
+        if(heartValue != null){
+            Log.i("KHAMALEONA", heartValue);
+            medicion.setText(heartValue);
+        }else{
+            Log.i("KHAMALEONA", "HeartValue es nulo.");
+        }
     }
 
     public void getBondedDevices(){
@@ -52,19 +90,15 @@ public class BluetoothDevice extends AppCompatActivity {
         address = getIntent().getStringExtra("ADDRESS");
         conexion.setText(name + ": " + address);
 
-        for (android.bluetooth.BluetoothDevice b: bluetoothAdapter.getBondedDevices()) {
-            if(b.getAddress().equals(address) && b.getName().equals(name)){
-                device = b;
-                bluetoothGatt = device.connectGatt(getApplicationContext(), true, bluetoothGattCallback);
-            }
-        }
+        device = bluetoothAdapter.getRemoteDevice(address);
+        bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
     }
 
     public void initializeButton(){
         boton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getHeartRate();
+                startScanHeartRate();
             }
         });
     }
@@ -78,7 +112,7 @@ public class BluetoothDevice extends AppCompatActivity {
     }
 
 
-    public void getHeartRate(){
+    public void startScanHeartRate(){
         BluetoothGattCharacteristic bchar = bluetoothGatt.getService(CustomBluetoothProfile.HeartRate.service)
                 .getCharacteristic(CustomBluetoothProfile.HeartRate.controlCharacteristic);
         bchar.setValue(new byte[]{21, 2, 1});
@@ -102,7 +136,7 @@ public class BluetoothDevice extends AppCompatActivity {
 
             if(newState == BluetoothProfile.STATE_CONNECTED){
                 stateConnected();
-            }else{
+            }else if(newState == BluetoothProfile.STATE_DISCONNECTED){
                 stateDisconnected();
             }
         }
@@ -133,7 +167,8 @@ public class BluetoothDevice extends AppCompatActivity {
             super.onCharacteristicChanged(gatt, characteristic);
             Log.i("test", "onCharacteristicChanged");
             byte[] data = characteristic.getValue();
-            medicion.setText(Arrays.toString(data));
+            Log.i("KHAMALEONA", Byte.toString(data[1]));
+            heartValue = Byte.toString(data[1]);
         }
 
         @Override

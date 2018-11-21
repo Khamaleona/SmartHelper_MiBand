@@ -2,97 +2,72 @@ package com.example.irene.smarthelper;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.widget.Toast;
-
-import java.util.ArrayList;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
-    private ListView listView;
-    private ArrayList<BluetoothDevice> devices;
-    private BluetoothAdapter mBluetoothAdapter;
+    private EditText btlAddress;
+    private Button tryConnecion;
+    private Button connectButton;
+    private TextView connectionState;
+    private BluetoothDevice device;
+    private BluetoothAdapter bluetoothAdapter;
+    private boolean exito;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        listView = findViewById(R.id.listView);
-        devices = new ArrayList<>();
+        btlAddress = findViewById(R.id.btlAddress);
+        tryConnecion = findViewById(R.id.tryConnection);
+        connectButton = findViewById(R.id.connect);
+        connectionState = findViewById(R.id.connectionState);
+        exito = false;
 
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        if(mBluetoothAdapter.getBondedDevices().isEmpty()){
-            Toast.makeText(this, "No avalaible devices", Toast.LENGTH_SHORT);
-        }else{
-            for (BluetoothDevice b: mBluetoothAdapter.getBondedDevices()) {
-                devices.add(b);
-            }
-
-            refreshList(this);
-            manageItems();
-        }
-
-//        hander.postDelayed((new Runnable() {
-//            @Override
-//            public void run() {
-//                refreshList(MainActivity.this);
-//            }
-//        }), 1000);
-
+        onClicTryConnection();
+        onClicStartConnection();
     }
 
-    public void refreshList(Context context){
-        ArrayList<String> list = new ArrayList<>();
-
-        if(mBluetoothAdapter.getBondedDevices().isEmpty()){
-            Toast.makeText(context, "No avalaible bluetooth devices", Toast.LENGTH_LONG);
-        }else{
-            for (BluetoothDevice b : mBluetoothAdapter.getBondedDevices()) {
-                Log.i("DEVICES",b.getName() + " - " + b.getAddress());
-                list.add(b.getName() + "\n" + b.getAddress());
-            }
-
-            listView.setAdapter(new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, list));
-        }
-    }
-
-    public void manageItems(){
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+    public void onClicTryConnection(){
+        tryConnecion.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                final BluetoothDevice device = devices.get(position);
-                if(device == null) return;
-                final Intent intent = new Intent(MainActivity.this, com.example.irene.smarthelper.BluetoothDevice.class);
-                intent.putExtra("NAME", device.getName());
-                intent.putExtra("ADDRESS", device.getAddress());
-                startActivity(intent);
+            public void onClick(View v) {
+                String address = btlAddress.getText().toString();
+                device = bluetoothAdapter.getRemoteDevice(address);
+
+                if(device == null){
+                    connectionState.setVisibility(View.VISIBLE);
+                    connectionState.setText("Conexión Fallida");
+                }else{
+                    connectButton.setEnabled(true);
+                    connectionState.setVisibility(View.VISIBLE);
+                    connectionState.setText("Conexión Exitosa");
+                    exito = true;
+                }
             }
         });
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_refresh:
-                refreshList(MainActivity.this);
-                break;
-        }
-        return true;
+    public void onClicStartConnection(){
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(exito){
+                    Intent intent = new Intent(MainActivity.this, com.example.irene.smarthelper.BluetoothDevice.class);
+                    intent.putExtra("ADDRESS", device.getAddress());
+                    intent.putExtra("NAME", device.getName());
+                    startActivity(intent);
+                }
+            }
+        });
     }
 
 }
