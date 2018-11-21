@@ -19,7 +19,7 @@ import java.util.Arrays;
 public class BluetoothDevice extends AppCompatActivity {
     private TextView medicion;
     private TextView conexion;
-    private Button boton;
+//    private Button boton;
     private String name;
     private String address;
     private android.bluetooth.BluetoothDevice device;
@@ -34,13 +34,13 @@ public class BluetoothDevice extends AppCompatActivity {
         setContentView(R.layout.activity_bluetooth_device);
 
         medicion = findViewById(R.id.medicion);
-        boton = findViewById(R.id.boton);
+//        boton = findViewById(R.id.boton);
         conexion = findViewById(R.id.conexion);
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         handler = new Handler();
 
         getBondedDevices();
-        initializeButton();
+//        initializeButton();
 
         Thread t = new Thread(){
             @Override
@@ -65,17 +65,6 @@ public class BluetoothDevice extends AppCompatActivity {
         t.start();
     }
 
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//        handler.postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-//                updateHeartValue();
-//            }
-//        },1000);
-//    }
-
     public void updateHeartValue(){
         if(heartValue != null){
             Log.i("KHAMALEONA", heartValue);
@@ -94,14 +83,14 @@ public class BluetoothDevice extends AppCompatActivity {
         bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
     }
 
-    public void initializeButton(){
-        boton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startScanHeartRate();
-            }
-        });
-    }
+//    public void initializeButton(){
+//        boton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                startScanHeartRate();
+//            }
+//        });
+//    }
 
     void stateConnected() {
         bluetoothGatt.discoverServices();
