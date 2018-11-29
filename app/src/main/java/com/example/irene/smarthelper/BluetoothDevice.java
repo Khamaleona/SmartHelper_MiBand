@@ -14,6 +14,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
 
 public class BluetoothDevice extends AppCompatActivity {
@@ -69,8 +75,35 @@ public class BluetoothDevice extends AppCompatActivity {
         if(heartValue != null){
             Log.i("KHAMALEONA", heartValue);
             medicion.setText(heartValue);
+            sendDataToServer();
         }else{
             Log.i("KHAMALEONA", "HeartValue es nulo.");
+        }
+    }
+
+    public void sendDataToServer(){
+        Gson gson = new Gson();
+        Medicion medicion = new Medicion(heartValue, "76048517Y");
+        String code = gson.toJson(medicion);
+
+        HttpURLConnection client = null;
+        try {
+            URL url = new URL("http://exampleurl.com");
+            client = (HttpURLConnection) url.openConnection();
+
+            client.setRequestMethod("POST");
+            client.setRequestProperty("MEDICION",code);
+
+            client.setDoOutput(true);
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if(client != null){
+                client.disconnect();
+            }
         }
     }
 
