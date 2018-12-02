@@ -9,16 +9,16 @@ import java.util.Date;
 public class Medicion {
     private String usuarioId;
     private String tiempo;
-    private int pulso;
-    private int oxigeno;
+    private String pulso;
+    private String oxigeno;
 
     public Medicion(String pulso, String id) {
         this.usuarioId = id;
         Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat  df = new SimpleDateFormat("dd MM yyyy'---'HH:mm:ss");
+        SimpleDateFormat  df = new SimpleDateFormat("yyyy'-'MM'-'dd HH:mm:ss");
         this.tiempo = df.format(calendar.getTime());
-        this.pulso = Integer.parseInt(pulso);
-        this.oxigeno = -1;
+        this.pulso = pulso;
+        this.oxigeno = "-1";
     }
 
     public String getUsuarioId() {
@@ -37,19 +37,19 @@ public class Medicion {
         this.tiempo = tiempo;
     }
 
-    public int getPulso() {
+    public String getPulso() {
         return pulso;
     }
 
-    public void setPulso(int pulso) {
+    public void setPulso(String pulso) {
         this.pulso = pulso;
     }
 
-    public int getOxigeno() {
+    public String getOxigeno() {
         return oxigeno;
     }
 
-    public void setOxigeno(int oxigeno) {
+    public void setOxigeno(String oxigeno) {
         this.oxigeno = oxigeno;
     }
 }

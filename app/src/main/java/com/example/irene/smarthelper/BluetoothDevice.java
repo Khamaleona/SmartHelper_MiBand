@@ -6,32 +6,33 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothProfile;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class BluetoothDevice extends AppCompatActivity {
     private TextView medicion;
     private TextView conexion;
-//    private Button boton;
     private String name;
     private String address;
     private android.bluetooth.BluetoothDevice device;
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothGatt bluetoothGatt;
-    private Handler handler;
     private String heartValue;
 
     @Override
@@ -40,74 +41,89 @@ public class BluetoothDevice extends AppCompatActivity {
         setContentView(R.layout.activity_bluetooth_device);
 
         medicion = findViewById(R.id.medicion);
-//        boton = findViewById(R.id.boton);
         conexion = findViewById(R.id.conexion);
+
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        handler = new Handler();
 
         getBondedDevices();
-//        initializeButton();
+        setRepeatingAsyncTask();
+    }
 
-        Thread t = new Thread(){
+    public void setRepeatingAsyncTask() {
+        final Handler handler = new Handler();
+        Timer timer = new Timer();
+
+        TimerTask task = new TimerTask() {
             @Override
-            public void run(){
-                while(!isInterrupted()){
-                    try{
-                        Thread.sleep(20000);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                startScanHeartRate();
-                                updateHeartValue();
-                            }
-                        });
-                    }catch (InterruptedException e){
-                        e.printStackTrace();
+            public void run() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            HTTPAsyncTask medTask = new HTTPAsyncTask();
+                            medTask.execute();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        if(heartValue != null && !heartValue.equals("0")){
+                            medicion.setText(heartValue);
+                        }
                     }
-                }
+                });
             }
         };
 
-        t.start();
+        timer.schedule(task, 0, 60 * 500);
     }
 
-    public void updateHeartValue(){
-        if(heartValue != null){
-            Log.i("KHAMALEONA", heartValue);
-            medicion.setText(heartValue);
-            sendDataToServer();
-        }else{
+    public String sendDataToServer() {
+
+        String response = "";
+
+        if (heartValue != null & !heartValue.equals("0")) {
+            Gson gson = new Gson();
+            Medicion medicion = new Medicion(heartValue, "12345678B");
+            String code = gson.toJson(medicion);
+            Log.i("KHAMALEONA", code);
+
+            HttpURLConnection client = null;
+            try {
+                URL url = new URL("http://192.168.1.103:8080/v1/mediciones");
+                client = (HttpURLConnection) url.openConnection();
+
+                client.setRequestMethod("POST");
+                client.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+
+                OutputStream os = client.getOutputStream();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
+                writer.write(code);
+                writer.flush();
+                writer.close();
+                os.close();
+
+                client.connect();
+                Log.i("KHAMALEONA", client.getResponseMessage());
+
+                response = client.getResponseMessage();
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (client != null) {
+                    client.disconnect();
+                }
+            }
+//            response = "OK.";
+        } else {
             Log.i("KHAMALEONA", "HeartValue es nulo.");
         }
+
+        return response;
     }
 
-    public void sendDataToServer(){
-        Gson gson = new Gson();
-        Medicion medicion = new Medicion(heartValue, "76048517Y");
-        String code = gson.toJson(medicion);
-
-        HttpURLConnection client = null;
-        try {
-            URL url = new URL("http://exampleurl.com");
-            client = (HttpURLConnection) url.openConnection();
-
-            client.setRequestMethod("POST");
-            client.setRequestProperty("MEDICION",code);
-
-            client.setDoOutput(true);
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if(client != null){
-                client.disconnect();
-            }
-        }
-    }
-
-    public void getBondedDevices(){
+    public void getBondedDevices() {
         name = getIntent().getStringExtra("NAME");
         address = getIntent().getStringExtra("ADDRESS");
         conexion.setText(name + ": " + address);
@@ -115,15 +131,6 @@ public class BluetoothDevice extends AppCompatActivity {
         device = bluetoothAdapter.getRemoteDevice(address);
         bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
     }
-
-//    public void initializeButton(){
-//        boton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                startScanHeartRate();
-//            }
-//        });
-//    }
 
     void stateConnected() {
         bluetoothGatt.discoverServices();
@@ -134,14 +141,14 @@ public class BluetoothDevice extends AppCompatActivity {
     }
 
 
-    public void startScanHeartRate(){
+    public void startScanHeartRate() {
         BluetoothGattCharacteristic bchar = bluetoothGatt.getService(CustomBluetoothProfile.HeartRate.service)
                 .getCharacteristic(CustomBluetoothProfile.HeartRate.controlCharacteristic);
         bchar.setValue(new byte[]{21, 2, 1});
         bluetoothGatt.writeCharacteristic(bchar);
     }
 
-    public void listenHeartRate(){
+    public void listenHeartRate() {
         BluetoothGattCharacteristic bchar = bluetoothGatt.getService(CustomBluetoothProfile.HeartRate.service)
                 .getCharacteristic(CustomBluetoothProfile.HeartRate.measurementCharacteristic);
         bluetoothGatt.setCharacteristicNotification(bchar, true);
@@ -156,9 +163,9 @@ public class BluetoothDevice extends AppCompatActivity {
             super.onConnectionStateChange(gatt, status, newState);
             Log.i("test", "onConnectionStateChange");
 
-            if(newState == BluetoothProfile.STATE_CONNECTED){
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
                 stateConnected();
-            }else if(newState == BluetoothProfile.STATE_DISCONNECTED){
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 stateDisconnected();
             }
         }
@@ -175,7 +182,6 @@ public class BluetoothDevice extends AppCompatActivity {
             super.onCharacteristicRead(gatt, characteristic, status);
             Log.i("test", "onCharacteristicRead");
             byte[] data = characteristic.getValue();
-            medicion.setText(Arrays.toString(data));
         }
 
         @Override
@@ -223,5 +229,19 @@ public class BluetoothDevice extends AppCompatActivity {
             Log.i("test", "onMtuChanged");
         }
     };
+
+    private class HTTPAsyncTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... strings) {
+            startScanHeartRate();
+            return sendDataToServer();
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            Log.i("KHAMALEONA", result);
+        }
+    }
 
 }
