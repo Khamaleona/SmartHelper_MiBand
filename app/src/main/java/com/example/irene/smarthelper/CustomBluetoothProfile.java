@@ -2,6 +2,9 @@ package com.example.irene.smarthelper;
 
 import java.util.UUID;
 
+/**
+ * Clase java que almacena los diferentes valores UUID que identifican al servicio de medición del pulso cardiaco.
+ */
 public class CustomBluetoothProfile {
 
     public static class HeartRate {

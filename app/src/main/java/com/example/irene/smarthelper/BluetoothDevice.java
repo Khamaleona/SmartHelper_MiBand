@@ -25,6 +25,10 @@ import java.net.URL;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * Clase BluetoothDevice que se encarga de la gestión de los servicios de la MiBand 2 a través de un adaptador Bluetooth y un Callback.
+ * Nos permitirá llamar al servicio de lectura de constantes vitales de la Mi Band.
+ */
 public class BluetoothDevice extends AppCompatActivity {
     private TextView medicion;
     private TextView conexion;
@@ -35,6 +39,10 @@ public class BluetoothDevice extends AppCompatActivity {
     private BluetoothGatt bluetoothGatt;
     private String heartValue;
 
+    /**
+     * Método onCreate de la Activity en la que se inicializan los componentes del Layout y se hacen las correspondientes llamadas para iniciar el proceso.
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +57,9 @@ public class BluetoothDevice extends AppCompatActivity {
         setRepeatingAsyncTask();
     }
 
+    /**
+     * Método que lanza en método EXECUTE del objeto de tipo AsyncTask que hemos creado para efectuar las lecturas del sensor y enviar los datos al servidor a través de una petición post.
+     */
     public void setRepeatingAsyncTask() {
         final Handler handler = new Handler();
         Timer timer = new Timer();
@@ -65,7 +76,7 @@ public class BluetoothDevice extends AppCompatActivity {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                        if(heartValue != null && !heartValue.equals("0")){
+                        if(heartValue != null){
                             medicion.setText(heartValue);
                         }
                     }
@@ -76,11 +87,15 @@ public class BluetoothDevice extends AppCompatActivity {
         timer.schedule(task, 0, 60 * 500);
     }
 
+    /**
+     * Método que realiza una conexión con el servidor (la URL ha de ser cambiada si el servidor se ejecuta en local) y envía los valores de las mediciones al servidor a través de una petición HTTP (post).
+     * @return devuelve la respuesta dada por el servidor al emitir la petición.
+     */
     public String sendDataToServer() {
 
         String response = "";
 
-        if (heartValue != null & !heartValue.equals("0")) {
+        if (heartValue != null) {
             Gson gson = new Gson();
             Medicion medicion = new Medicion(heartValue, "12345678B");
             String code = gson.toJson(medicion);
@@ -88,7 +103,7 @@ public class BluetoothDevice extends AppCompatActivity {
 
             HttpURLConnection client = null;
             try {
-                URL url = new URL("http://192.168.1.103:8080/v1/mediciones");
+                URL url = new URL("http://192.168.137.166:8080/v1/mediciones");
                 client = (HttpURLConnection) url.openConnection();
 
                 client.setRequestMethod("POST");
@@ -102,7 +117,6 @@ public class BluetoothDevice extends AppCompatActivity {
                 os.close();
 
                 client.connect();
-                Log.i("KHAMALEONA", client.getResponseMessage());
 
                 response = client.getResponseMessage();
 
@@ -115,7 +129,6 @@ public class BluetoothDevice extends AppCompatActivity {
                     client.disconnect();
                 }
             }
-//            response = "OK.";
         } else {
             Log.i("KHAMALEONA", "HeartValue es nulo.");
         }
@@ -123,6 +136,10 @@ public class BluetoothDevice extends AppCompatActivity {
         return response;
     }
 
+    /**
+     * Método que permite realizar la conexión bluetooth con la MiBand 2 a través de la dirección bluetooth introducida en MainActivity.
+     * Como el dispositivo no aparece como "Bonded Devices", es necesario realizar la conexión manualmente.
+     */
     public void getBondedDevices() {
         name = getIntent().getStringExtra("NAME");
         address = getIntent().getStringExtra("ADDRESS");
@@ -132,15 +149,23 @@ public class BluetoothDevice extends AppCompatActivity {
         bluetoothGatt = device.connectGatt(this, true, bluetoothGattCallback);
     }
 
+    /**
+     * Método stateConnected del Callback creado.
+     */
     void stateConnected() {
         bluetoothGatt.discoverServices();
     }
 
+    /**
+     * Método stateDisconnected del Callback creado.
+     */
     void stateDisconnected() {
         bluetoothGatt.disconnect();
     }
 
-
+    /**
+     * Método que inicia el proceso de obtención del valor de la pulsación.
+     */
     public void startScanHeartRate() {
         BluetoothGattCharacteristic bchar = bluetoothGatt.getService(CustomBluetoothProfile.HeartRate.service)
                 .getCharacteristic(CustomBluetoothProfile.HeartRate.controlCharacteristic);
@@ -148,6 +173,9 @@ public class BluetoothDevice extends AppCompatActivity {
         bluetoothGatt.writeCharacteristic(bchar);
     }
 
+    /**
+     * Método que establece el identificador del servicio que se utilizará para obtener el pulso.
+     */
     public void listenHeartRate() {
         BluetoothGattCharacteristic bchar = bluetoothGatt.getService(CustomBluetoothProfile.HeartRate.service)
                 .getCharacteristic(CustomBluetoothProfile.HeartRate.measurementCharacteristic);
@@ -157,7 +185,11 @@ public class BluetoothDevice extends AppCompatActivity {
         bluetoothGatt.writeDescriptor(descriptor);
     }
 
+    /**
+     * Definición del callback BluetoothGattCallback que permite gestionar el servicio de pulsómetro.
+     */
     final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
+
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
@@ -190,6 +222,11 @@ public class BluetoothDevice extends AppCompatActivity {
             Log.i("test", "onCharacteristicWrite");
         }
 
+        /**
+         * Método que obtiene el valor del pulso cardiaco y lo almacena en la variable global heartValue.
+         * @param gatt
+         * @param characteristic
+         */
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
@@ -230,14 +267,26 @@ public class BluetoothDevice extends AppCompatActivity {
         }
     };
 
+    /**
+     * AsyncTask customizada que nos permite ejecutar de forma paralela al hilo inicial, el proceso de obtención de valores cardiacos y enviarlos al servidor.
+     */
     private class HTTPAsyncTask extends AsyncTask<String, Void, String> {
 
+        /**
+         * Método que se ejecutará de fondo y que leerá las mediciones y las enviará al servidor.
+         * @param strings
+         * @return Estado devuelto por el servidor (OK -> post realizado correctamente).
+         */
         @Override
         protected String doInBackground(String... strings) {
             startScanHeartRate();
             return sendDataToServer();
         }
 
+        /**
+         * Nos permite mostrar por Log la respuesta devuelta por el servidor. Este método no es necesario, es más a título informativo.
+         * @param result
+         */
         @Override
         protected void onPostExecute(String result) {
             Log.i("KHAMALEONA", result);
